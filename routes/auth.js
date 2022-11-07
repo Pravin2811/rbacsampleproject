@@ -8,7 +8,7 @@ const {verifyAccessToken} = require('./function')
 const {v1:uuidv1} = require('uuid')
 
 
-
+//SignUp
 router.post('/signup',async (req,res)=>{
     const {name, email, password} = req.body
     //const roles = ["Admin", "Teacher", "Student"]
@@ -52,6 +52,7 @@ router.post('/signup',async (req,res)=>{
 
 })
 
+//Login post
 router.post('/login',async (req, res)=>{
     const {email, password} = req.body
     const user = await User.findOne({email})
@@ -91,7 +92,50 @@ router.post('/login',async (req, res)=>{
      
 })
 
-router.post('/update', verifyAccessToken, async (req,res)=>{
+//Creating Profile by Admin
+router.post('/createprofile', verifyAccessToken, async (req, res)=>{
+    const userDet = req.payload
+    const password = req.body.password
+    const hashedpassword = await bcrypt.hash(password, 12)
+    const uid = uuidv1()
+    if(userDet.role === 'Admin'){
+        const user = new User({
+            name:req.body.name,
+            email:req.body.email,
+            password:hashedpassword,
+            role:req.body.role,
+            id:uid,
+            bio:req.body.bio,
+            mobile:req.body.mobile
+        })
+        
+        const grade = new Grade({
+            id:uid,
+            name:req.body.name
+        }) 
+         
+         user.save()
+         .then(data=>{
+            if(user.role === 'Student'){
+            grade.save()
+            .then(done=>{
+                res.json({message:'Grades updated'})
+            }).catch((err)=>{
+                console.log(err)
+            })
+            }
+            res.json({message:'User profile created'})
+        }).catch((err)=>{
+            console.log(err)
+        })
+    }else{
+        res.status(401).json('Access denied')
+    }
+})
+
+
+//Role update Post
+router.post('/updaterole', verifyAccessToken, async (req,res)=>{
     const {id, role} = req.body
     const userDet = req.payload
     if(userDet.role === 'Admin'){
@@ -102,7 +146,7 @@ router.post('/update', verifyAccessToken, async (req,res)=>{
     }
 })
 
-
+//GetUser details
 router.get('/getuser',verifyAccessToken,async (req,res)=>{
     const userDet = req.payload
     if(userDet.role === 'Admin'){
@@ -118,6 +162,7 @@ router.get('/getuser',verifyAccessToken,async (req,res)=>{
     }
 })
 
+//GetUser detail with ID
 router.get('/getuser/:id',verifyAccessToken, async (req, res)=>{
     const userDet = req.payload
     if(userDet.role === 'Admin'){ 
@@ -134,6 +179,7 @@ router.get('/getuser/:id',verifyAccessToken, async (req, res)=>{
     }
 })
 
+//Getgrades of students
 router.get('/getgrades',verifyAccessToken, async (req,res)=>{
     const userDet = req.payload
     if(userDet.role === 'Admin' || userDet.role === 'Teacher'){
@@ -144,6 +190,7 @@ router.get('/getgrades',verifyAccessToken, async (req,res)=>{
     }
 })
 
+//Getgrades with student ID
 router.get('/getgrades/:id',verifyAccessToken, async (req,res)=>{
     const userDet = req.payload
     if(userDet.role === 'Admin' || userDet.role === 'Teacher'){
@@ -159,6 +206,81 @@ router.get('/getgrades/:id',verifyAccessToken, async (req,res)=>{
     }else{
         res.json('No access')
     }
+})
+
+//Viewing Profiles by Admin
+router.get('/profiles',verifyAccessToken,async (req, res)=>{
+    // const result =await User.find().populate('grades')
+    // res.json(result)
+    const userDet = req.payload
+    if(userDet.role === 'Admin'){
+        const result = await User.aggregate([
+        {$lookup:{
+            from:"grades",
+            localField:"name",
+            foreignField:"name",
+            as:"grades"
+            }
+        }
+        ])
+        res.json(result)
+   }else{
+    res.json(`Don't have access`)
+   }
+})
+
+
+//ViewProfiles depending on their roles
+router.get('/viewprofiles', verifyAccessToken, async (req,res)=>{
+    const userDet = req.payload
+    if(userDet.role === 'Admin'){
+        const result = await User.find()
+        res.status(200).json(result)
+    }else if(userDet.role === 'Teacher'){
+        const result = await User.find({"role":"Student"})
+        res.status(200).json(result)
+    }else{
+        res.status(401).json('Access denied')
+    }
+})
+
+//Updating profile based on id
+router.put('/updateprofile/:id', verifyAccessToken,async (req, res)=>{
+    const userDet = req.payload
+    //const {name, email, role} = req.body
+    if(userDet.role === 'Admin'){
+        const result = await User.findOneAndUpdate({id:req.params.id},{$set:{name:req.body.name, email:req.body.email, role:req.body.role, bio:req.body.bio, mobile:req.body.mobile}})
+        const result1 = await Grade.findOneAndUpdate({id:req.params.id},{$set:{name:name}})
+        res.json('Successfully updated')
+    }else{
+        res.status(401).json('Access denied')
+    }
+})
+
+
+//Updating grades based on ID
+router.put('/updategrades/:id', verifyAccessToken, async (req, res)=>{
+    const userDet = req.payload
+    if(userDet.role === 'Teacher'){
+        const result = await Grade.findOneAndUpdate({id:req.params.id},{$set:{Tamil:req.body.Tamil, English:req.body.English,Maths:req.body.Maths,Science:req.body.Science,SocialScience:req.body.SocialScience}})
+        res.json('Successfully updated') 
+    }else{
+        res.status(401).json('Access denied')
+    }
+})
+
+
+//Deleting profile 
+router.delete('/deleteprofile/:id',verifyAccessToken,async (req, res)=>{
+    const userDet = req.payload
+    if(userDet.role === 'Admin'){
+    const result = await User.deleteOne({id:req.params.id})
+    const result1 = await Grade.deleteOne({id:req.params.id})
+    res.json('Successfully Deleted')
+    }else{
+        res.status(401).json('Access denied')
+    }
+    
 })
 
 module.exports = router

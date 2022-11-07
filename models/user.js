@@ -17,6 +17,9 @@ const UserSchema = new mongoose.Schema({
         type:String,
         default:""
     }
+    // grades:[{
+    //     type: mongoose.Schema.Types.ObjectId, ref:'grades'
+    // }]
 })
 
 // UserSchema.pre("save", function(next){
