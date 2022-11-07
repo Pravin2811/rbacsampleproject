@@ -1,31 +1,55 @@
 const router = require('express').Router()
 const User = require('../models/user')
+const Grade = require('../models/grades')
 const bcrypt = require('bcrypt')
 const jwt = require('jsonwebtoken')
 const {SECRET} = require('../config/index')
-const passport = require('passport')
 const {verifyAccessToken} = require('./function')
+const {v1:uuidv1} = require('uuid')
 
 
 
 router.post('/signup',async (req,res)=>{
     const {name, email, password} = req.body
-    const roles = ["Admin", "Teacher", "Student"]
-    const role = roles[Math.floor(Math.random() * roles.length)]
+    //const roles = ["Admin", "Teacher", "Student"]
+    //const role = roles[Math.floor(Math.random() * roles.length)]
     const hashedpassword = await bcrypt.hash(password, 12)
+    const uid = uuidv1()
+
     const user = new User({
         name,
         email,
         password:hashedpassword,
-        role
+        role:'Student',
+        id:uid
     })
     
+    const grade = new Grade({
+        id:uid,
+        name:name,
+        Tamil:Math.floor(Math.random() * 100),
+        English:Math.floor(Math.random() * 100),
+        Maths:Math.floor(Math.random() * 100),
+        Science:Math.floor(Math.random() * 100),
+        SocialScience:Math.floor(Math.random() * 100)
+    }) 
+     
      user.save()
-    .then(data=>{
-        res.send({message:'saved'})
+     .then(data=>{
+        if(user.role === 'Student'){
+        grade.save()
+        .then(done=>{
+            res.json({message:'Grades updated'})
+        }).catch((err)=>{
+            console.log(err)
+        })
+        }
+        res.json({message:'User profile created'})
     }).catch((err)=>{
         console.log(err)
     })
+    
+
 })
 
 router.post('/login',async (req, res)=>{
@@ -67,6 +91,16 @@ router.post('/login',async (req, res)=>{
      
 })
 
+router.post('/update', verifyAccessToken, async (req,res)=>{
+    const {id, role} = req.body
+    const userDet = req.payload
+    if(userDet.role === 'Admin'){
+        const result = await User.findOneAndUpdate({"id":id},{$set:{"role":role}})
+        res.json({message:"Successfully updated"})
+    }else{
+        res.json({message:"You can't modify the records"})
+    }
+})
 
 
 router.get('/getuser',verifyAccessToken,async (req,res)=>{
@@ -97,6 +131,33 @@ router.get('/getuser/:id',verifyAccessToken, async (req, res)=>{
         res.json(result)
     }else{
         res.json({message:'Access Denied'})
+    }
+})
+
+router.get('/getgrades',verifyAccessToken, async (req,res)=>{
+    const userDet = req.payload
+    if(userDet.role === 'Admin' || userDet.role === 'Teacher'){
+        const result = await Grade.find()
+        res.json(result)
+    }else{
+        res.json(`Can't Access`)
+    }
+})
+
+router.get('/getgrades/:id',verifyAccessToken, async (req,res)=>{
+    const userDet = req.payload
+    if(userDet.role === 'Admin' || userDet.role === 'Teacher'){
+        const result = await Grade.findOne({id:req.params.id})
+        res.json(result)
+    }else if(userDet.role === 'Student'){
+        if(userDet.id === req.params.id){
+            const result = await Grade.findOne({id:req.params.id})
+            res.json(result)
+        }else{
+            res.json('Access denied')
+        }
+    }else{
+        res.json('No access')
     }
 })
 
