@@ -195,7 +195,16 @@ router.get('/getgrades/:id',verifyAccessToken, async (req,res)=>{
     const userDet = req.payload
     if(userDet.role === 'Admin' || userDet.role === 'Teacher'){
         const result = await Grade.findOne({id:req.params.id})
-        res.json(result)
+        .then(data=>{
+            if(!data){
+                res.status(404).json('No data')
+            }else{
+            res.json(data)
+            }
+        }).catch(err=>{
+            console.log(err)
+        })
+        
     }else if(userDet.role === 'Student'){
         if(userDet.id === req.params.id){
             const result = await Grade.findOne({id:req.params.id})
@@ -250,7 +259,7 @@ router.put('/updateprofile/:id', verifyAccessToken,async (req, res)=>{
     //const {name, email, role} = req.body
     if(userDet.role === 'Admin'){
         const result = await User.findOneAndUpdate({id:req.params.id},{$set:{name:req.body.name, email:req.body.email, role:req.body.role, bio:req.body.bio, mobile:req.body.mobile}})
-        const result1 = await Grade.findOneAndUpdate({id:req.params.id},{$set:{name:name}})
+        const result1 = await Grade.findOneAndUpdate({id:req.params.id},{$set:{name:req.body.name}})
         res.json('Successfully updated')
     }else{
         res.status(401).json('Access denied')
