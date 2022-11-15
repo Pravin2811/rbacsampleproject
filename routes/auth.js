@@ -47,6 +47,10 @@ oAuth2Client.setCredentials({refresh_token:REFRESH_TOKEN})
 //     }
 // }
 
+router.get('/', (req, res)=>{
+    res.send('Home')
+})
+
 //SignUp
 router.post('/signup',async (req,res)=>{
     const {name, email, password} = req.body
@@ -500,7 +504,7 @@ function paginatedResults(model) {
         }
       }
       try {
-        results.results = await model.find({},{$sort:{name:-1}}).limit(limit).skip(startIndex).exec()
+        results.results = await model.find().limit(limit).skip(startIndex).exec()
         res.paginatedResults = results
         next()
       } catch (e) {
