@@ -5,10 +5,26 @@ const Grade = require('./grades')
 
 const UserSchema = new mongoose.Schema({
     id:String,
-    name: String,
-    email: String,
-    password: String,
-    role: String,
+    name: {
+        type:String,
+        required: true,
+        minLength:2
+    },
+    email: {
+        type:String,
+        required: true,
+        minLength:10
+    },
+    password:{
+        type:String,
+        required: true,
+        minLength:6
+    },
+    role:{
+        type: String,
+        required: true,
+        default:"Student"
+    },
     mobile:{
         type:String,
         default:""

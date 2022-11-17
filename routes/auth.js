@@ -11,7 +11,6 @@ const {google} = require('googleapis')
 const userOtpVerification = require('../models/otpstore')
 const { $where } = require('../models/user')
 
-
 const oAuth2Client = new google.auth.OAuth2(CLIENT_ID, CLIENT_SECRET, REDIRECT_URI)
 oAuth2Client.setCredentials({refresh_token:REFRESH_TOKEN})
 
@@ -58,7 +57,7 @@ router.post('/signup',async (req,res)=>{
     //const role = roles[Math.floor(Math.random() * roles.length)]
     const hashedpassword = await bcrypt.hash(password, 12)
     const uid = uuidv1()
-
+     
     const user = new User({
         name,
         email,
@@ -151,10 +150,10 @@ router.post('/forgot-password',async (req, res, next)=>{
     }
     const token = jwt.sign(payload, secret, {expiresIn:'10m'})
     const link = `http://localhost:3000/reset-password/${user.id}/${token}`
-    console.log(link)
+    //console.log(link)
     const otp = `${Math.floor(1000 + Math.random() * 9000)}`
     const hashedOtp = await bcrypt.hash(otp, 10)
-    const newUserOtpVerification = await new userOtpVerification({
+    const newUserOtpVerification = new userOtpVerification({
         id:user.id,
         otp:hashedOtp,
         createdAt: Date.now(),
@@ -190,16 +189,13 @@ router.post('/forgot-password',async (req, res, next)=>{
             <br><br><a href=${link}>${link}</a>
             <br><br>The above link is valid for 10mins.</p>`
         }
+        console.log(link)
         res.send('Password reset link has been sent to mail...')
         const result = await transport.sendMail(mailOptions)
         return result
-        
-
     }catch(err){
         return err
     }
-    
-    
 })
 
 //Reset password
@@ -267,7 +263,7 @@ router.post('/verifyotp', async (req, res)=>{
 })
 
 //Creating Profile by Admin
-router.post('/createprofile', verifyAccessToken, async (req, res)=>{
+router.post('/createprofile', verifyAccessToken, async (req, res, next)=>{
     const userDet = req.payload
     const password = req.body.password
     const hashedpassword = await bcrypt.hash(password, 12)
@@ -305,6 +301,7 @@ router.post('/createprofile', verifyAccessToken, async (req, res)=>{
     }else{
         res.status(401).json('Access denied')
     }
+    
 })
 
 
@@ -476,14 +473,49 @@ router.post('/users',verifyAccessToken, paginatedResults(User), (req, res) => {
     }
 })
 
-// router.post('/sorted', (req, res)=>{
-//     const sort = await User.sort()
+// router.post('/sorted',async (req, res)=>{
+    
+//     const sort = await User.find().sort()
+//     res.json(sort)
 // })
+
+//Search api
+router.get('/search', async (req, res)=>{
+    const query = {}
+    if(req.query.name && req.query.email && req.query.role){
+        query.$and = [{"name":{$regex: req.query.name}},{"email":{$regex: req.query.email}},{"role":{$regex: req.query.role}}]
+    }else if(req.query.name && req.query.email){
+        query.$and = [{"name":{$regex: req.query.name}},{"email":{$regex: req.query.email}}]
+    }else if(req.query.name && req.query.role){
+        query.$and = [{"name":{$regex: req.query.name}},{"role":{$regex: req.query.role}}]
+    }else if(req.query.email && req.query.role){
+        query.$and = [{"email":{$regex: req.query.email}},{"role":{$regex: req.query.role}}]
+    }else if(req.query.name){
+        query.$or = [{"name":{$regex: req.query.name}}]
+    }else if(req.query.email){
+        query.$or = [{"email":{$regex: req.query.email}}]
+    }else if(req.query.role){
+        query.$or = [{"role":{$regex: req.query.role}}]
+    }
+    const data = await User.find(query)
+    res.json(data)
+})
+
 
 function paginatedResults(model) {
     return async (req, res, next) => {
+      const {sort} = req.body
       const page = parseInt(req.body.page)
       const limit = parseInt(req.body.limit) || 10
+      const name = sort.name
+      const role = sort.role
+
+      const sort1 = {name: 1}
+      const sort2 = {name: -1}
+      const sort3 = {role : 1}
+      const sort4 = {role: -1}
+      //const sort5 = {name:1, role:-1}
+      const sort6 = {name:-1, role:1}
   
       const startIndex = (page - 1) * limit
       const endIndex = page * limit
@@ -504,15 +536,30 @@ function paginatedResults(model) {
         }
       }
       try {
-        results.results = await model.find().limit(limit).skip(startIndex).exec()
+        if(req.body.name === '-1' && req.body.role === '1'){
+        results.results = await model.find().sort(sort6).limit(limit).skip(startIndex).exec()
         res.paginatedResults = results
         next()
+        }else if(name === '1'){
+        results.results = await model.find().sort(sort1).limit(limit).skip(startIndex).exec()
+        res.paginatedResults = results
+        next()
+        }else if(name === '-1'){
+        results.results = await model.find().sort(sort2).limit(limit).skip(startIndex).exec()
+        res.paginatedResults = results
+        next()
+        }else if(role === '1'){
+        results.results = await model.find().sort(sort3).limit(limit).skip(startIndex).exec()
+        res.paginatedResults = results
+        next()
+        }else if(role === '-1'){
+        results.results = await model.find().sort(sort4).limit(limit).skip(startIndex).exec()
+        res.paginatedResults = results
+        next()
+        }
       } catch (e) {
         res.status(500).json({ message: e.message })
       }
     }
 }
-
-
-
 module.exports = router
