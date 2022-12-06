@@ -4,7 +4,7 @@ const jwt = require('jsonwebtoken')
   
 module.exports = {
     verifyAccessToken:(req, res, next)=>{
-        if(!req.headers['authorization']) return res.json({message:'Pls enter token'})
+        if(!req.headers['authorization']) return res.json({message:'No Access'}); console.log('Please enter token')
         const authHeader = req.headers['authorization']
         const bearerToken = authHeader.split(' ')
         const token = bearerToken[1]
