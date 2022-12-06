@@ -389,11 +389,11 @@ router.get('/getgrades/:id',verifyAccessToken, async (req,res)=>{
 })
 
 //Viewing Profiles by Admin
-router.get('/profiles',verifyAccessToken,async (req, res)=>{
+router.get('/profiles',/*verifyAccessToken,*/async (req, res)=>{
     // const result =await User.find().populate('grades')
     // res.json(result)
     const userDet = req.payload
-    if(userDet.role === 'Admin'){
+    //if(userDet.role === 'Admin'){
         const result = await User.aggregate([
         {$lookup:{
             from:"grades",
@@ -404,9 +404,9 @@ router.get('/profiles',verifyAccessToken,async (req, res)=>{
         }
         ])
         res.json(result)
-   }else{
-    res.json(`Don't have access`)
-   }
+   //}else{
+    //res.json(`Don't have access`)
+   //}
 })
 
 
