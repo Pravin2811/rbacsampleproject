@@ -88,6 +88,7 @@ router.post('/signup',async (req,res)=>{
         }
         res.json({message:'User profile created'})
     }).catch((err)=>{
+        res.status(500).send('Failed')
         console.log(err)
     })
     
@@ -135,7 +136,7 @@ router.post('/login',async (req, res)=>{
 })
 
 //forgot password
-router.post('/forgot-password',async (req, res, next)=>{
+router.post('/forgot-password',async (req, res)=>{
     const {email} = req.body
     const user = await User.findOne({email:email})
     if(!user){
